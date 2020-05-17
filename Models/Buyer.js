@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
-const ProductSc = new Schema({
+const BuyerSc = new Schema({
     user_id: String,
     cart: [],
     orders: [],
@@ -11,4 +11,4 @@ const ProductSc = new Schema({
     }
 });
 
-module.exports = Product = mongoose.model("Product", ProductSc);
+module.exports = Buyer = mongoose.model("Buyer", BuyerSc);

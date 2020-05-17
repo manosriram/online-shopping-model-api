@@ -1,7 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const Product = require("./Models/Product.js");
+const Buyer = require("./Models/Buyer.js");
 const JSON = require("./MOCK_DATA.json");
+const Order = require("./Models/Orders.js");
 
 router.get("/checkout", async (req, res) => {
     try {
@@ -9,9 +10,13 @@ router.get("/checkout", async (req, res) => {
         if (!user_id)
             return res.status(403).json({ message: "Not Authenticated" });
 
-        const PRD = await Product.findOne({ user_id });
+        const PRD = await Buyer.findOne({ user_id });
+        let ord;
+
+        ord = await Order.findOne({ user_id });
         if (!PRD) return res.status(400).json({ message: "No user found" });
 
+        if (!ord) ord = new Order({ user_id });
         let cost = 0;
         for (let t = 0; t < PRD.cart.length; ++t)
             cost +=
@@ -22,6 +27,9 @@ router.get("/checkout", async (req, res) => {
 
         PRD.credits -= cost;
         PRD.orders = [...PRD.orders, { cart: PRD.cart, cost }];
+        ord.orders.push(PRD.cart);
+        ord.save();
+
         PRD.cart = [];
         PRD.save();
         return res.json({ cost });
@@ -40,7 +48,7 @@ router.post("/remove_from_cart", async (req, res) => {
         if (!user_id)
             return res.status(403).json({ message: "Not Authenticated" });
 
-        const product = await Product.findOne({ user_id });
+        const product = await Buyer.findOne({ user_id });
         product.cart = product.cart.filter(prd => prd.product_id != product_id);
         product.save();
 
@@ -59,11 +67,11 @@ router.post("/add_to_cart", async (req, res) => {
             return res.status(403).json({ message: "Not Authenticated" });
         if (!product_id || !quantity)
             return res.status(406).json({ message: "Bad credentials." });
-        const prod = await Product.findOne({ user_id });
+        const prod = await Buyer.findOne({ user_id });
 
         var new_prod;
         if (!prod) {
-            new_prod = new Product({
+            new_prod = new Buyer({
                 user_id
             });
         } else new_prod = prod;
@@ -93,7 +101,7 @@ router.get("/view_orders", async (req, res) => {
         if (!user_id)
             return res.status(403).json({ message: "Not Authenticated" });
 
-        const CRT = await Product.findOne({ user_id });
+        const CRT = await Buyer.findOne({ user_id });
         return res.status(200).json({ orders: CRT.orders });
     } catch (err) {
         res.status(404).json({ message: "Some error occured" });
@@ -107,8 +115,12 @@ router.get("/view_cart", async (req, res) => {
         if (!user_id)
             return res.status(403).json({ message: "Not Authenticated" });
 
-        const CRT = await Product.findOne({ user_id });
-        return res.status(200).json({ cart: CRT.cart });
+        let new_user;
+        new_user = await Buyer.findOne({ user_id });
+        if (!new_user) new_user = new Buyer({ user_id });
+
+        new_user.save();
+        return res.status(200).json({ cart: new_user.cart });
     } catch (err) {
         res.status(404).json({ message: "Some error occured" });
     }
@@ -124,7 +136,7 @@ router.get("/account_summary", async (req, res) => {
         if (!user_id)
             return res.status(403).json({ message: "Not Authenticated" });
 
-        const prod = await Product.findOne({ user_id });
+        const prod = await Buyer.findOne({ user_id });
         return res.status(200).json({ prod });
     } catch (err) {
         res.status(404).json({ message: "Some error occured" });
@@ -141,7 +153,7 @@ router.post("/add_credits", async (req, res) => {
         if (!credits)
             return res.status(406).json({ message: "Bad Credentials" });
 
-        const prod = await Product.findOne({ user_id });
+        const prod = await Buyer.findOne({ user_id });
         prod.credits += parseInt(credits);
         prod.save();
 
@@ -151,6 +163,11 @@ router.post("/add_credits", async (req, res) => {
     } catch (err) {
         res.status(404).json({ message: "Some error occured" });
     }
+});
+
+router.get("/view_all_orders", async (req, res) => {
+    const ord = await Order.find({});
+    return res.status(200).json({ orders: ord });
 });
 
 module.exports = router;
